@@ -1,0 +1,952 @@
+<meta content="width=device-width, initial-scale=1" name="viewport"/><meta content="width=device-width, initial-scale=1" name="viewport"/><!DOCTYPE html>
+
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Calculadora de Takt Time</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    /* Estilos personalizados para el 'thumb' del input de rango para una mejor consistencia entre navegadores */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #90cdf4; /* Blue-300 for dark mode */
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+      margin-top: -8px; /* Ajustar para centrar el 'thumb' verticalmente */
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #90cdf4; /* Blue-300 for dark mode */
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    }
+
+    input[type="range"]::-ms-thumb {
+      width: 100%;
+      height: 4px;
+      background: #4a5568; /* Gray-700 */
+      border-radius: 2px;
+    }
+
+    /* Estilos para la pista del input de rango */
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      background: #4a5568; /* Gray-700 */
+      border-radius: 2px;
+    }
+
+    input[type="range"]::-moz-range-track {
+      width: 100%;
+      height: 4px;
+      background: #4a5568; /* Gray-700 */
+      border-radius: 2px;
+    }
+
+    input[type="range"]::-ms-track {
+      width: 100%;
+      height: 4px;
+      background: #4a5568; /* Gray-700 */
+      border-radius: 2px;
+      border-color: transparent; /* Eliminar borde predeterminado */
+      color: transparent; /* Eliminar relleno predeterminado */
+    }
+
+    /* Estilo para entrada inválida */
+    input.invalid {
+        border-color: #f56565; /* Red-400 for dark mode */
+        box-shadow: 0 0 0 2px rgba(245, 101, 101, 0.5); /* Red-400 con transparencia */
+    }
+
+    /* Estilos para impresión */
+    @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        color: #1a202c; /* Color de texto oscuro para impresión */
+        background-color: #ffffff; /* Fondo blanco para impresión */
+      }
+      /* Ocultar elementos que no deben imprimirse */
+      .container > *:not(.printable-content) {
+        display: none !important;
+      }
+      .printable-content {
+        visibility: visible;
+        display: block !important;
+        width: 100%;
+        padding: 15px; /* Reducido */
+        box-sizing: border-box;
+      }
+      .printable-content img {
+        max-width: 120px; /* Tamaño del logo para impresión, ligeramente más pequeño */
+        height: auto;
+        margin-bottom: 15px; /* Reducido */
+      }
+      .printable-content h1 {
+        font-size: 1.8rem; /* Tamaño del título principal, reducido */
+        text-align: center;
+        margin-bottom: 15px; /* Reducido */
+        color: #2d3748;
+      }
+      .printable-content h2 {
+        font-size: 1.3rem; /* Tamaño del subtítulo de resultados, reducido */
+        margin-top: 15px; /* Reducido */
+        margin-bottom: 10px; /* Reducido */
+        color: #2d3748;
+      }
+      .printable-content p {
+        font-size: 0.9rem; /* Tamaño de párrafo, reducido */
+        line-height: 1.4; /* Espaciado de línea más compacto */
+        margin-bottom: 5px; /* Reducido */
+      }
+      .printable-content strong {
+        font-weight: 700;
+      }
+      .print-timestamp {
+        text-align: right;
+        font-size: 0.75rem; /* Tamaño de timestamp, reducido */
+        color: #718096;
+        margin-top: 20px; /* Reducido */
+      }
+      /* Asegurarse de que los resultados y el gráfico se vean bien */
+      .result {
+        background-color: #f7fafc; /* Un fondo muy claro para la sección de resultados */
+        border: 1px solid #ebf8ff; /* Borde suave */
+        padding: 15px; /* Reducido */
+        border-radius: 8px;
+        margin-bottom: 15px; /* Reducido */
+      }
+      /* Estilos para la sección de parámetros de entrada en la impresión */
+      .print-input-parameters {
+          background-color: #f7fafc;
+          border: 1px solid #ebf8ff;
+          padding: 15px; /* Reducido */
+          border-radius: 8px;
+          margin-bottom: 15px; /* Reducido */
+      }
+      .print-input-parameters h2 {
+          font-size: 1.3rem; /* Reducido */
+          font-weight: 600;
+          color: #2d3748;
+          margin-bottom: 10px; /* Reducido */
+      }
+      .print-input-parameters p {
+          font-size: 0.9rem; /* Reducido */
+          line-height: 1.4; /* Espaciado de línea más compacto */
+          margin-bottom: 5px; /* Reducido */
+      }
+      /* Ocultar el selector de unidad de Takt Time en la impresión */
+      .printable-content #taktTimeUnit { display: none; }
+      /* Ajustar el margen para el texto del Takt Time cuando el selector está oculto */
+      .printable-content p.flex.items-center.gap-2 { display: block; }
+      .printable-content p.flex.items-center.gap-2 strong { margin-right: 5px; }
+    }
+  </style>
+<style>
+:root {
+  --primary: #6750A4;
+  --on-primary: #FFFFFF;
+  --secondary: #625B71;
+  --on-secondary: #FFFFFF;
+  --background: #1C1B1F;
+  --surface: #2B2930;
+  --on-surface: #E6E1E5;
+  --font: 'Roboto', sans-serif;
+  --radius: 20px;
+  --elevation: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+body {
+  font-family: var(--font);
+  background-color: var(--background);
+  color: var(--on-surface);
+  margin: 0;
+  padding: 1rem;
+}
+
+.container, .card {
+  background-color: var(--surface);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: var(--elevation);
+  max-width: 600px;
+  margin: 2rem auto;
+}
+
+h1, h2 {
+  color: var(--on-surface);
+}
+
+label {
+  display: block;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+input, select {
+  width: 100%;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  border-radius: var(--radius);
+  border: none;
+  background-color: #3B383E;
+  color: var(--on-surface);
+  font-size: 1rem;
+}
+
+button {
+  margin-top: 2rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: var(--elevation);
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #7F67BE;
+}
+
+.result, .output {
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+</style></head>
+<body class="font-inter bg-gray-900 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
+<div class="container bg-gray-800 rounded-xl shadow-lg p-6 sm:p-8 w-full max-w-2xl">
+<div class="flex justify-center mb-6">
+<img alt="Logotipo de AccuMED" class="h-16 w-auto object-contain rounded-lg shadow-sm" id="logoImg" onerror="this.onerror=null;this.src='https://placehold.co/120x60/AEC6CF/000000?text=AccuMED+Logo';" src="https://s3-prod.plasticsnews.com/s3fs-public/styles/1024x512/public/accumed-logo_i.jpg"/>
+</div>
+<h1 class="text-3xl sm:text-4xl font-bold text-center text-gray-100 mb-6">Calculadora de Takt Time</h1>
+<div class="mb-6 py-4 px-6 bg-gray-700 rounded-lg shadow-sm">
+<h2 class="text-xl sm:text-2xl font-semibold text-gray-100 mb-4">Parámetros de Entrada</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+<div class="mb-4 sm:mb-0">
+<div class="flex items-center gap-2 mb-2">
+<label class="text-gray-200 text-sm sm:text-base font-semibold" for="demandValue">Demanda</label>
+<select class="px-3 py-1 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out" id="demandUnit" title="Seleccione la unidad para su demanda (Anual, Mensual, Diaria).">
+<option value="annual">Anual</option>
+<option value="monthly">Mensual</option>
+<option value="daily">Diaria</option>
+</select>
+</div>
+<input class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out bg-gray-800 text-gray-100" id="demandValue" placeholder="Ingrese la cantidad de demanda (ej. 10,000)" title="La cantidad total de unidades requeridas durante el período de demanda seleccionado." type="text" value=""/>
+</div>
+<div class="mb-4 sm:mb-0">
+<div class="flex items-center gap-2 mb-2">
+<label class="text-gray-200 text-sm sm:text-base font-semibold" for="cycleTimeValue">Tiempo de Ciclo</label>
+<select class="px-3 py-1 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out" id="cycleTimeUnit" title="Seleccione la unidad para su tiempo de ciclo (Segundos, Minutos).">
+<option value="seconds">Segundos</option>
+<option value="minutes">Minutos</option>
+</select>
+</div>
+<input class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out bg-gray-800 text-gray-100" id="cycleTimeValue" min="0" placeholder="Ingrese el tiempo de ciclo" title="El tiempo que tarda en completarse una unidad de producto o servicio." type="number" value=""/>
+</div>
+<div class="mb-4 sm:mb-0">
+<label class="block text-gray-200 text-sm sm:text-base font-semibold mb-2" for="workingDays">Días Hábiles por Año</label>
+<input class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out bg-gray-800 text-gray-100" id="workingDays" min="1" title="El número de días que su operación trabaja en un año típico." type="number" value="251"/>
+</div>
+<div class="mb-4 sm:mb-0">
+<label class="block text-gray-200 text-sm sm:text-base font-semibold mb-2" for="hoursPerShift">Horas por Turno</label>
+<input class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out bg-gray-800 text-gray-100" id="hoursPerShift" min="0.1" step="0.01" title="El número de horas productivas en un solo turno." type="number" value="7.25"/>
+</div>
+<div class="sm:col-span-2">
+<label class="block text-gray-200 text-sm sm:text-base font-semibold mb-2" for="efficiencyPercentage">Eficiencia (%)</label>
+<input class="w-full px-4 py-2 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out bg-gray-800 text-gray-100" id="efficiencyPercentage" max="100" min="0" step="0.1" title="El porcentaje de tiempo que es verdaderamente productivo (ej., 85% considera un 15% de tiempo de inactividad/descansos)." type="number" value="85"/>
+</div>
+</div>
+</div>
+<div class="mb-6 py-4 px-6 bg-gray-700 rounded-lg shadow-sm">
+<h2 class="text-xl sm:text-2xl font-semibold text-gray-100 mb-4">Configuración de Línea</h2>
+<div class="space-y-4 mb-6">
+<div class="flex items-center justify-between">
+<label class="text-gray-200 text-sm sm:text-base font-medium">Líneas (1 turno):</label>
+<div class="flex items-center gap-2">
+<button class="line-btn bg-gray-600 hover:bg-gray-500 text-gray-100 font-bold py-2 px-4 rounded-full text-lg leading-none transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500" data-action="decrement" data-target="val1" title="Disminuir líneas operando 1 turno">-</button>
+<span class="text-gray-100 font-semibold text-xl w-10 text-center" id="val1">0</span>
+<button class="line-btn bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-full text-lg leading-none transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400" data-action="increment" data-target="val1" title="Aumentar líneas operando 1 turno">+</button>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<label class="text-gray-200 text-sm sm:text-base font-medium">Líneas (2 turnos):</label>
+<div class="flex items-center gap-2">
+<button class="line-btn bg-gray-600 hover:bg-gray-500 text-gray-100 font-bold py-2 px-4 rounded-full text-lg leading-none transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500" data-action="decrement" data-target="val2" title="Disminuir líneas operando 2 turnos">-</button>
+<span class="text-gray-100 font-semibold text-xl w-10 text-center" id="val2">0</span>
+<button class="line-btn bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-full text-lg leading-none transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400" data-action="increment" data-target="val2" title="Aumentar líneas operando 2 turnos">+</button>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<label class="text-gray-200 text-sm sm:text-base font-medium">Líneas (3 turnos):</label>
+<div class="flex items-center gap-2">
+<button class="line-btn bg-gray-600 hover:bg-gray-500 text-gray-100 font-bold py-2 px-4 rounded-full text-lg leading-none transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500" data-action="decrement" data-target="val3" title="Disminuir líneas operando 3 turnos">-</button>
+<span class="text-gray-100 font-semibold text-xl w-10 text-center" id="val3">0</span>
+<button class="line-btn bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 rounded-full text-lg leading-none transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400" data-action="increment" data-target="val3" title="Aumentar líneas operando 3 turnos">+</button>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap justify-center gap-4 mt-6">
+<button class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 ease-in-out" id="setDefaultBtn">
+          Establecer Turnos Predeterminados
+        </button>
+<button class="w-full sm:w-auto px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition duration-200 ease-in-out" id="resetAllBtn">
+          Restablecer Todo
+        </button>
+<button class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-200 ease-in-out" id="printResultsBtn">
+          Imprimir Resultados
+        </button>
+</div>
+</div>
+<div class="result bg-blue-900 bg-opacity-30 p-4 rounded-lg shadow-inner border border-blue-800 space-y-2 text-gray-100 printable-content">
+<h2 class="text-xl sm:text-2xl font-semibold text-gray-100 mb-2">Resultados</h2>
+<p><strong>Días Hábiles por Año:</strong> <span class="font-medium" id="displayWorkingDays">N/A</span></p>
+<p><strong>Horas por Turno:</strong> <span class="font-medium" id="displayHoursPerShift">N/A</span></p>
+<p><strong>Eficiencia:</strong> <span class="font-medium" id="displayEfficiency">N/A</span> %</p>
+<p><strong>Demanda Diaria:</strong> <span class="font-medium" id="dailyDemand">N/A</span></p>
+<p><strong>Capacidad Total de Línea (Turnos Acumulados):</strong> <span class="font-medium" id="totalTurnos">N/A</span></p>
+<p class="flex items-center gap-2">
+<strong>Takt Time:</strong>
+<span class="font-medium" id="taktTime">N/A</span>
+<select class="px-2 py-1 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out" id="taktTimeUnit">
+<option value="seconds">s/unidad</option>
+<option value="minutes">min/unidad</option>
+<option value="hours">hrs/unidad</option>
+</select>
+</p>
+<p><strong>Operadores Teóricos:</strong> <span class="font-medium" id="theoreticalOps">N/A</span></p>
+<p><strong>Total Operadores Teóricos:</strong> <span class="font-medium" id="totalOps">N/A</span></p>
+</div>
+<div class="flex items-center justify-center gap-2 mt-6 mb-4">
+<label class="text-gray-200 text-sm sm:text-base font-semibold" for="chartSelector">Ver Gráfico:</label>
+<select class="px-3 py-1 border border-gray-600 rounded-lg bg-gray-700 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 ease-in-out" id="chartSelector">
+<option value="takt">Takt vs Ciclo</option>
+<option value="lines">Líneas Ponderadas</option>
+<option value="ops">Operadores</option>
+<option value="capacity">Capacidad vs Demanda</option>
+</select>
+</div>
+<div class="mt-6">
+<canvas class="w-full h-auto max-h-[32rem]" id="chart"></canvas>
+</div>
+</div>
+<script>
+    // Referencias de Elementos DOM
+    const demandValueInput = document.getElementById('demandValue');
+    const demandUnitSelector = document.getElementById('demandUnit');
+    const cycleTimeValueInput = document.getElementById('cycleTimeValue');
+    const cycleTimeUnitSelector = document.getElementById('cycleTimeUnit');
+    const workingDaysInput = document.getElementById('workingDays');
+    const hoursPerShiftInput = document.getElementById('hoursPerShift');
+    const efficiencyPercentageInput = document.getElementById('efficiencyPercentage');
+
+    // Referencias para los nuevos selectores de línea basados en botones
+    const val1Span = document.getElementById('val1');
+    const val2Span = document.getElementById('val2');
+    const val3Span = document.getElementById('val3');
+
+    const dailyDemandSpan = document.getElementById('dailyDemand');
+    const totalTurnosSpan = document.getElementById('totalTurnos');
+    const taktTimeSpan = document.getElementById('taktTime');
+    const taktTimeUnitSelector = document.getElementById('taktTimeUnit');
+    const theoreticalOpsSpan = document.getElementById('theoreticalOps');
+    const totalOpsSpan = document.getElementById('totalOps');
+    const displayWorkingDaysSpan = document.getElementById('displayWorkingDays');
+    const displayHoursPerShiftSpan = document.getElementById('displayHoursPerShift');
+    const displayEfficiencySpan = document.getElementById('displayEfficiency');
+
+    const setDefaultBtn = document.getElementById('setDefaultBtn');
+    const resetAllBtn = document.getElementById('resetAllBtn');
+    const printResultsBtn = document.getElementById('printResultsBtn');
+    const chartSelector = document.getElementById('chartSelector');
+    const logoImg = document.getElementById('logoImg'); // Referencia al logo
+
+    const chartEl = document.getElementById('chart');
+    let currentChart;
+    let activeChartType = 'takt';
+
+    // Valores iniciales para la funcionalidad de reseteo
+    const initialValues = {
+        demandValue: '',
+        demandUnit: 'annual',
+        cycleTimeValue: '',
+        cycleTimeUnit: 'seconds',
+        workingDays: 251,
+        hoursPerShift: 7.25,
+        efficiencyPercentage: 85,
+        turno1: 1,
+        turno2: 0,
+        turno3: 0,
+        taktTimeUnit: 'seconds'
+    };
+
+    /**
+     * Establece los valores predeterminados para las líneas de turno y recalcula.
+     * Establece 1 línea trabajando 1 turno, las demás a 0.
+     */
+    function setDefaultShifts() {
+      val1Span.textContent = 1;
+      val2Span.textContent = 0;
+      val3Span.textContent = 0;
+      calculate();
+    }
+
+    /**
+     * Restablece todos los campos de entrada a sus valores iniciales y recalcula.
+     */
+    function resetAll() {
+        demandValueInput.value = initialValues.demandValue;
+        demandUnitSelector.value = initialValues.demandUnit;
+        cycleTimeValueInput.value = initialValues.cycleTimeValue;
+        cycleTimeUnitSelector.value = initialValues.cycleTimeUnit;
+        workingDaysInput.value = initialValues.workingDays;
+        hoursPerShiftInput.value = initialValues.hoursPerShift;
+        efficiencyPercentageInput.value = initialValues.efficiencyPercentage;
+
+        val1Span.textContent = initialValues.turno1;
+        val2Span.textContent = initialValues.turno2;
+        val3Span.textContent = initialValues.turno3;
+
+        taktTimeUnitSelector.value = initialValues.taktTimeUnit;
+
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.classList.remove('invalid');
+        });
+        // También limpiar la clase 'invalid' del input de demanda (que ahora es tipo texto)
+        demandValueInput.classList.remove('invalid');
+
+        calculate();
+    }
+
+    /**
+     * Maneja la lógica de incremento/decremento para los selectores de línea.
+     * @param {Event} event - El objeto de evento de clic.
+     */
+    function handleLineChange(event) {
+        const button = event.target.closest('.line-btn');
+        if (!button) return;
+
+        const targetId = button.dataset.target;
+        const valueSpan = document.getElementById(targetId);
+        let currentValue = parseInt(valueSpan.textContent);
+        const action = button.dataset.action;
+        const max = 20;
+        const min = 0;
+
+        if (isNaN(currentValue)) {
+            currentValue = 0;
+        }
+
+        if (action === 'increment') {
+            if (currentValue < max) {
+                currentValue++;
+            }
+        } else if (action === 'decrement') {
+            if (currentValue > min) {
+                currentValue--;
+            }
+        }
+        valueSpan.textContent = currentValue;
+        calculate();
+    }
+
+    /**
+     * Limpia y valida un campo de entrada numérico.
+     * Si el inputElement es de tipo 'text' (como demandValueInput), elimina las comas.
+     * @param {HTMLElement} inputElement - El elemento de entrada a validar.
+     * @returns {boolean} Verdadero si la entrada es un número válido, falso en caso contrario.
+     */
+    function validateInput(inputElement) {
+        let valueString = inputElement.value;
+        // Si es el campo de demanda, eliminar comas y puntos antes de parsear
+        if (inputElement.id === 'demandValue') {
+            valueString = valueString.replace(/[,.]/g, ''); // Eliminar todas las comas y puntos
+        }
+
+        const value = parseFloat(valueString);
+        const min = parseFloat(inputElement.min || 0);
+        const max = parseFloat(inputElement.max || Infinity); // Usar Infinity si no hay max
+
+        if (isNaN(value) || value < min || value > max) {
+            inputElement.classList.add('invalid');
+            return false;
+        }
+        inputElement.classList.remove('invalid');
+        return true;
+    }
+
+    /**
+     * Formatea un número con comas como separadores de miles y punto como decimal.
+     * @param {number} num - El número a formatear.
+     * @returns {string} El número formateado como cadena.
+     */
+    function formatNumberWithCommas(num) {
+        // Usar 'en-US' que utiliza coma para miles y punto para decimales
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 0, // No forzar decimales si no los hay
+            maximumFractionDigits: 20 // Permitir hasta 20 decimales si son necesarios
+        }).format(num);
+    }
+
+    /**
+     * Calcula el Takt Time, la Demanda Diaria y los Operadores en función de los valores de entrada.
+     * Actualiza los resultados mostrados y el gráfico.
+     */
+    function calculate() {
+      // Validar entradas y obtener valores
+      // Para demandValueInput, ahora es un input de texto, así que necesitamos limpiar las comas y puntos antes de parsear
+      const demandValueCleaned = demandValueInput.value.replace(/[,.]/g, '');
+      const demandValue = validateInput(demandValueInput) ? parseFloat(demandValueCleaned) : NaN;
+
+      const cycleTimeValue = validateInput(cycleTimeValueInput) ? parseFloat(cycleTimeValueInput.value) : NaN;
+      const workingDays = validateInput(workingDaysInput) ? parseFloat(workingDaysInput.value) : NaN;
+      const hoursPerShift = validateInput(hoursPerShiftInput) ? parseFloat(hoursPerShiftInput.value) : NaN;
+      const efficiencyPercentage = validateInput(efficiencyPercentageInput) ? parseFloat(efficiencyPercentageInput.value) : NaN;
+
+      const lines1Shift = parseInt(val1Span.textContent) || 0;
+      const lines2Shifts = parseInt(val2Span.textContent) || 0;
+      const lines3Shifts = parseInt(val3Span.textContent) || 0;
+
+      // Actualizar las visualizaciones de span
+      val1Span.textContent = lines1Shift;
+      val2Span.textContent = lines2Shifts;
+      val3Span.textContent = lines3Shifts;
+
+      displayWorkingDaysSpan.textContent = !isNaN(workingDays) ? workingDays : 'N/A';
+      displayHoursPerShiftSpan.textContent = !isNaN(hoursPerShift) ? hoursPerShift.toFixed(2) : 'N/A';
+      displayEfficiencySpan.textContent = !isNaN(efficiencyPercentage) ? efficiencyPercentage.toFixed(1) : 'N/A';
+
+      // --- Calcular Demanda Diaria ---
+      let dailyDemand = 'N/A';
+      let numericDailyDemand = 0;
+      if (!isNaN(demandValue) && !isNaN(workingDays) && workingDays > 0) {
+          const selectedDemandUnit = demandUnitSelector.value;
+          switch (selectedDemandUnit) {
+              case 'annual':
+                  numericDailyDemand = demandValue / workingDays;
+                  break;
+              case 'monthly':
+                  numericDailyDemand = (demandValue * 12) / workingDays;
+                  break;
+              case 'daily':
+                  numericDailyDemand = demandValue;
+                  break;
+          }
+          // Redondear la demanda diaria hacia arriba
+          numericDailyDemand = Math.ceil(numericDailyDemand);
+          dailyDemand = formatNumberWithCommas(numericDailyDemand);
+      }
+      dailyDemandSpan.textContent = dailyDemand;
+
+      // --- Convertir Tiempo de Ciclo a segundos ---
+      let numericCycleTimeInSeconds = 0;
+      if (!isNaN(cycleTimeValue)) {
+          const selectedCycleTimeUnit = cycleTimeUnitSelector.value;
+          if (selectedCycleTimeUnit === 'minutes') {
+              numericCycleTimeInSeconds = cycleTimeValue * 60;
+          } else { // 'seconds'
+              numericCycleTimeInSeconds = cycleTimeValue;
+          }
+      }
+
+      // --- Calcular Turnos de Línea Acumulados Totales ---
+      const totalAccumulatedLineShifts = (lines1Shift * 1) + (lines2Shifts * 2) + (lines3Shifts * 3);
+      totalTurnosSpan.textContent = totalAccumulatedLineShifts;
+
+      // --- Calcular Tiempo Disponible en Segundos (con Eficiencia) ---
+      let numericAvailableTimeSeconds = 0;
+      if (!isNaN(hoursPerShift) && hoursPerShift > 0 && !isNaN(efficiencyPercentage) && efficiencyPercentage >= 0) {
+          numericAvailableTimeSeconds = totalAccumulatedLineShifts * hoursPerShift * 3600 * (efficiencyPercentage / 100);
+      }
+
+      // --- Calcular Takt Time ---
+      let taktTime = 'N/A';
+      let numericTaktTime = 0; // Takt time en segundos
+      if (numericDailyDemand > 0 && numericAvailableTimeSeconds > 0) {
+          numericTaktTime = numericAvailableTimeSeconds / numericDailyDemand;
+
+          // Convertir takt time a la unidad de visualización seleccionada
+          const selectedTaktTimeUnit = taktTimeUnitSelector.value;
+          switch (selectedTaktTimeUnit) {
+              case 'seconds':
+                  // Redondear takt time hacia arriba cuando se expresa en segundos
+                  taktTime = Math.ceil(numericTaktTime).toFixed(0); // toFixed(0) para asegurar que no haya decimales
+                  break;
+              case 'minutes':
+                  taktTime = (numericTaktTime / 60).toFixed(2);
+                  break;
+                  case 'hours':
+                  taktTime = (numericTaktTime / 3600).toFixed(3);
+                  break;
+          }
+      }
+      taktTimeSpan.textContent = taktTime;
+
+      // --- Calcular Operadores Teóricos ---
+      let operators = 'N/A';
+      let numericOperators = 0;
+      if (numericTaktTime > 0 && numericCycleTimeInSeconds > 0) {
+          numericOperators = Math.ceil(numericCycleTimeInSeconds / numericTaktTime);
+          operators = numericOperators;
+      }
+      theoreticalOpsSpan.textContent = operators;
+
+      // --- Calcular Total de Operadores Teóricos ---
+      let totalOperators = 'N/A';
+      let numericTotalOperators = 0;
+      if (!isNaN(numericOperators) && !isNaN(totalAccumulatedLineShifts)) {
+          numericTotalOperators = Math.ceil(numericOperators * totalAccumulatedLineShifts);
+          totalOperators = totalAccumulatedLineShifts > 0 ? formatNumberWithCommas(numericTotalOperators) : 'N/A'; // Formatear total de operadores
+      }
+      totalOpsSpan.textContent = totalOperators;
+
+      // --- Calcular Capacidad Diaria (Unidades) ---
+      let numericDailyCapacityUnits = 0;
+      if (numericAvailableTimeSeconds > 0 && numericCycleTimeInSeconds > 0) {
+          numericDailyCapacityUnits = numericAvailableTimeSeconds / numericCycleTimeInSeconds;
+      }
+
+
+      // --- Preparar datos para el Gráfico ---
+      const linesForChart = [
+        lines1Shift * 1,
+        lines2Shifts * 2,
+        lines3Shifts * 3
+      ];
+
+      // Solo actualizar el gráfico si los valores principales son números, de lo contrario destruirlo
+      if (!isNaN(numericTaktTime) && !isNaN(numericCycleTimeInSeconds) && !isNaN(numericOperators) && !isNaN(numericDailyDemand) && !isNaN(numericDailyCapacityUnits)) {
+        updateChart(numericTaktTime, numericCycleTimeInSeconds, linesForChart, numericOperators, numericTotalOperators, numericDailyDemand, numericDailyCapacityUnits);
+      } else {
+        if (currentChart) currentChart.destroy();
+      }
+    }
+
+    /**
+     * Actualiza el gráfico Chart.js según el activeChartType.
+     */
+    function updateChart(takt, cycle, lines, ops, totalOps, dailyDemand, dailyCapacity) {
+      if (currentChart) {
+        currentChart.destroy();
+      }
+
+      let cycleTimePerTheoreticalOperator = 0;
+      if (ops > 0) {
+          cycleTimePerTheoreticalOperator = cycle / ops;
+      }
+
+      const getSuggestedYAxisMax = (dataArray) => {
+        if (!dataArray || dataArray.length === 0) return 10;
+        const maxValue = Math.max(...dataArray);
+        return maxValue > 0 ? maxValue * 1.25 : 1;
+      };
+
+      const commonChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false // Ocultar leyenda para todos los gráficos
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { display: true, color: '#a0aec0' }, /* Light gray ticks */
+            title: { display: false } // Título del eje X eliminado
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: '#4a5568' }, /* Darker grid lines */
+            ticks: { color: '#a0aec0' }, /* Light gray ticks */
+            title: { display: true, color: '#a0aec0' } /* Light gray title */
+          }
+        }
+      };
+
+      if (activeChartType === 'takt') {
+        const dataForChart = [takt, cycleTimePerTheoreticalOperator];
+        currentChart = new Chart(chartEl, {
+          type: 'bar',
+          data: {
+            labels: ['Takt', 'Ciclo/Op. Teórico'],
+            datasets: [{
+              data: dataForChart,
+              backgroundColor: ['#48bb78', '#f6ad55'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            ...commonChartOptions,
+            scales: {
+              ...commonChartOptions.scales,
+              y: {
+                ...commonChartOptions.scales.y,
+                title: {
+                  ...commonChartOptions.scales.y.title,
+                  text: 'Tiempo (segundos)'
+                },
+                suggestedMax: getSuggestedYAxisMax(dataForChart)
+              }
+            }
+          }
+        });
+      } else if (activeChartType === 'lines') {
+        const dataForChart = lines;
+        currentChart = new Chart(chartEl, {
+          type: 'bar',
+          data: {
+            labels: ['Turno 1', 'Turno 2', 'Turno 3'],
+            datasets: [{
+              data: dataForChart,
+              backgroundColor: ['#63b3ed', '#a0aec0', '#9f7aea'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            ...commonChartOptions,
+            scales: {
+              ...commonChartOptions.scales,
+              y: {
+                ...commonChartOptions.scales.y,
+                title: {
+                  ...commonChartOptions.scales.y.title,
+                  text: 'Líneas Ponderadas'
+                },
+                ticks: { stepSize: 1, beginAtZero: true },
+                suggestedMax: getSuggestedYAxisMax(dataForChart)
+              }
+            }
+          }
+        });
+      } else if (activeChartType === 'ops') {
+        const dataForChart = [ops, totalOps];
+        currentChart = new Chart(chartEl, {
+          type: 'bar',
+          data: {
+            labels: ['Op. Teórico', 'Op. Total'],
+            datasets: [{
+              data: dataForChart,
+              backgroundColor: ['#9f7aea', '#fc8181'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            ...commonChartOptions,
+            scales: {
+              ...commonChartOptions.scales,
+              y: {
+                ...commonChartOptions.scales.y,
+                title: {
+                  ...commonChartOptions.scales.y.title,
+                  text: 'Número de Operadores'
+                },
+                ticks: { stepSize: 1, beginAtZero: true },
+                suggestedMax: getSuggestedYAxisMax(dataForChart)
+              }
+            }
+          }
+        });
+      } else if (activeChartType === 'capacity') {
+        const dataForChart = [dailyDemand, dailyCapacity];
+        currentChart = new Chart(chartEl, {
+          type: 'bar',
+          data: {
+            labels: ['Demanda Diaria', 'Capacidad Diaria'],
+            datasets: [{
+              data: dataForChart,
+              backgroundColor: ['#ecc94b', '#48bb78'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            ...commonChartOptions,
+            scales: {
+              ...commonChartOptions.scales,
+              y: {
+                ...commonChartOptions.scales.y,
+                title: {
+                  ...commonChartOptions.scales.y.title,
+                  text: 'Unidades por Día'
+                },
+                suggestedMax: getSuggestedYAxisMax(dataForChart)
+              }
+            }
+          }
+        });
+      }
+    }
+
+    /**
+     * Maneja el cambio de selección del gráfico desde el menú desplegable.
+     */
+    function handleChartSelectionChange(event) {
+        activeChartType = event.target.value;
+        calculate();
+    }
+
+    /**
+     * Función para imprimir la sección de resultados y los parámetros de entrada.
+     */
+    function printResults() {
+      const resultsContent = document.querySelector('.printable-content').innerHTML; // Obtener el HTML de la sección de resultados
+      const logoSrc = logoImg.src; // Obtener la URL del logo
+
+      // Capturar los parámetros de entrada actuales
+      const inputParametersHtml = `
+          <div class="print-input-parameters">
+              <h2>Parámetros de Entrada</h2>
+              <p><strong>Demanda:</strong> ${demandValueInput.value} (${demandUnitSelector.options[demandUnitSelector.selectedIndex].text})</p>
+              <p><strong>Tiempo de Ciclo:</strong> ${cycleTimeValueInput.value} (${cycleTimeUnitSelector.options[cycleTimeUnitSelector.selectedIndex].text})</p>
+              <p><strong>Días Hábiles por Año:</strong> ${workingDaysInput.value}</p>
+              <p><strong>Horas por Turno:</strong> ${hoursPerShiftInput.value}</p>
+              <p><strong>Eficiencia:</strong> ${efficiencyPercentageInput.value} %</p>
+              <p><strong>Líneas (1 turno):</strong> ${val1Span.textContent}</p>
+              <p><strong>Líneas (2 turnos):</strong> ${val2Span.textContent}</p>
+              <p><strong>Líneas (3 turnos):</strong> ${val3Span.textContent}</p>
+          </div>
+      `;
+
+      const now = new Date();
+      const timestamp = now.toLocaleDateString('es-ES', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+
+      const printWindow = window.open('', '_blank'); // Abrir una nueva ventana
+
+      // Escribir el contenido en la nueva ventana
+      printWindow.document.write('<!DOCTYPE html>');
+      printWindow.document.write('<html lang="es"><head><title>Informe de Takt Time</title>');
+      printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">');
+      printWindow.document.write('<style>');
+      printWindow.document.write(`
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; color: #1a202c; background-color: #ffffff; }
+        .print-container { width: 100%; max-width: 800px; margin: 0 auto; padding: 15px; } /* Ajustado */
+        .print-header { text-align: center; margin-bottom: 15px; } /* Ajustado */
+        .print-header img { max-width: 120px; height: auto; margin-bottom: 15px; } /* Ajustado */
+        .print-header h1 { font-size: 1.8rem; font-weight: 700; color: #2d3748; margin: 0; } /* Ajustado */
+        .print-section { background-color: #f7fafc; border: 1px solid #ebf8ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; } /* Ajustado */
+        .print-section h2 { font-size: 1.3rem; font-weight: 600; color: #2d3748; margin-bottom: 10px; } /* Ajustado */
+        .print-section p { font-size: 0.9rem; line-height: 1.4; margin-bottom: 5px; } /* Ajustado */
+        .print-section strong { font-weight: 700; }
+        .print-timestamp { text-align: right; font-size: 0.75rem; color: #718096; margin-top: 20px; } /* Ajustado */
+        .print-input-parameters { background-color: #f7fafc; border: 1px solid #ebf8ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; } /* Ajustado */
+        .print-input-parameters h2 { font-size: 1.3rem; font-weight: 600; color: #2d3748; margin-bottom: 10px; } /* Ajustado */
+        .print-input-parameters p { font-size: 0.9rem; line-height: 1.4; margin-bottom: 5px; } /* Ajustado */
+        /* Ocultar el selector de unidad de Takt Time en la impresión */
+        .printable-content #taktTimeUnit { display: none; }
+        /* Ajustar el margen para el texto del Takt Time cuando el selector está oculto */
+        .printable-content p.flex.items-center.gap-2 { display: block; }
+        .printable-content p.flex.items-center.gap-2 strong { margin-right: 5px; }
+      `);
+      printWindow.document.write('</style>');
+      printWindow.document.write('</head><body>');
+      printWindow.document.write('<div class="print-container">');
+      printWindow.document.write('<div class="print-header">');
+      printWindow.document.write(`<img src="${logoSrc}" alt="Logotipo de AccuMED">`);
+      printWindow.document.write('<h1>Informe de Resultados de Takt Time</h1>');
+      printWindow.document.write('</div>'); // Cierre de print-header
+
+      // Resultados primero
+      printWindow.document.write('<div class="print-section">');
+      printWindow.document.write(resultsContent); // Insertar el contenido de la sección de resultados
+      printWindow.document.write('</div>'); // Cierre de print-section
+
+      // Luego Parámetros de Entrada
+      printWindow.document.write(inputParametersHtml); // Sección de parámetros de entrada
+
+      printWindow.document.write(`<p class="print-timestamp">Generado el: ${timestamp}</p>`);
+      printWindow.document.write('</div>'); // Cierre de print-container
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+
+      // Esperar un poco para que el contenido se cargue antes de imprimir
+      printWindow.onload = function() {
+        printWindow.print();
+      };
+    }
+
+
+    // --- Event Listeners ---
+    // Añadido un listener para el evento 'blur' para formatear la demanda
+    demandValueInput.addEventListener('blur', (event) => {
+        const value = parseFloat(event.target.value.replace(/[,.]/g, '')); // Eliminar comas y puntos para parsear
+        if (!isNaN(value)) {
+            event.target.value = formatNumberWithCommas(value);
+        }
+        calculate(); // Recalcular después de formatear
+    });
+    // También formatear al escribir para una mejor experiencia de usuario
+    demandValueInput.addEventListener('input', (event) => {
+        const caretPos = event.target.selectionStart;
+        const oldLength = event.target.value.length;
+        const rawValue = event.target.value.replace(/[,.]/g, ''); // Eliminar comas y puntos para parsear
+
+        let formattedValue = rawValue;
+
+        if (!isNaN(parseFloat(rawValue)) && rawValue.trim() !== '') {
+            formattedValue = formatNumberWithCommas(parseFloat(rawValue));
+        }
+
+        event.target.value = formattedValue;
+        const newLength = event.target.value.length;
+        const diff = newLength - oldLength;
+        event.target.setSelectionRange(caretPos + diff, caretPos + diff);
+
+        calculate(); // Recalcular en tiempo real
+    });
+
+    demandUnitSelector.addEventListener('change', calculate);
+    cycleTimeValueInput.addEventListener('input', calculate);
+    cycleTimeUnitSelector.addEventListener('change', calculate);
+    workingDaysInput.addEventListener('input', calculate);
+    hoursPerShiftInput.addEventListener('input', calculate);
+    efficiencyPercentageInput.addEventListener('input', calculate);
+
+    document.querySelectorAll('.line-btn').forEach(button => {
+        button.addEventListener('click', handleLineChange);
+    });
+
+    setDefaultBtn.addEventListener('click', setDefaultShifts);
+    resetAllBtn.addEventListener('click', resetAll);
+    printResultsBtn.addEventListener('click', printResults); // Event listener para el nuevo botón de imprimir
+
+    chartSelector.addEventListener('change', handleChartSelectionChange);
+    taktTimeUnitSelector.addEventListener('change', calculate);
+
+
+    // Cálculo inicial y visualización del gráfico cuando la página se carga
+    window.onload = function() {
+        val1Span.textContent = initialValues.turno1;
+        val2Span.textContent = initialValues.turno2;
+        val3Span.textContent = initialValues.turno3;
+        efficiencyPercentageInput.value = initialValues.efficiencyPercentage;
+        taktTimeUnitSelector.value = initialValues.taktTimeUnit;
+        // Formatear el valor inicial de la demanda si existe
+        if (demandValueInput.value !== '') {
+            const initialDemand = parseFloat(demandValueInput.value.replace(/[,.]/g, ''));
+            if (!isNaN(initialDemand)) {
+                demandValueInput.value = formatNumberWithCommas(initialDemand);
+            }
+        }
+        calculate();
+    };
+  </script>
+</body>
+</html>
